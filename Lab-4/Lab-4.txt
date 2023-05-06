@@ -1,0 +1,172 @@
+1.
+.model small
+.stack 100h
+
+.data
+msg1 db 0dh, 0ah, 'Enter a character: $'
+msg2 db 0dh, 0ah, 'Binary representation: $'
+msg3 db 0dh, 0ah, 'Number of 1 bits: $'
+char db ?
+count db 0
+
+.code
+main proc
+    mov ax, @data
+    mov ds, ax
+    
+    lea dx, msg1
+    mov ah, 09h
+    int 21h
+    
+    mov ah, 01h
+    int 21h
+    mov char, al
+    
+    mov al, char
+    mov cx, 8
+    mov bh, 0
+    mov bl, 1
+
+L1:
+    shr al, 1
+    jc L2
+    mov dl, '0'
+    jmp L3
+    
+L2:
+    mov dl, '1'
+    inc count
+
+L3:
+    mov ah, 02h
+    int 21h
+    loop L1
+    
+    lea dx, msg3
+    mov ah, 09h
+    int 21h
+    
+    mov al, count
+    add al, 30h
+    mov ah, 02h
+    int 21h
+    
+    mov ah, 4ch
+    int 21h 
+
+main endp
+end main
+
+2.org 100h
+
+start:
+  mov ah, 1      
+  int 21h        
+  cmp al, 0Dh    
+  je exit        
+  mov ah, 2      
+  mov dl, al     
+  int 21h        
+  mov ah, 2      
+  mov dl, 0Ah    
+  int 21h        
+  mov ah, 2      
+  mov dl, al     
+  mov bl, dl     
+  shr bl, 4      
+  call print_hex 
+  mov dl, bl     
+  call print_hex 
+  mov ah, 2      
+  mov dl, 0Ah    
+  int 21h        
+  jmp start      
+
+exit:
+  mov ah, 4Ch    
+  int 21h        
+
+print_hex:
+  push bx        
+  push ax        
+  mov bh, 0      
+  mov bl, dl     
+  and bl, 0Fh    
+  cmp bl, 0Ah    
+  jb hex_digit   
+  add bl, 7h 
+     
+hex_digit:
+  add bl, 30h    
+  mov dl, bl     
+  mov ah, 2      
+  int 21h        
+  pop ax         
+  pop bx         
+  ret            
+
+3.org 100h
+
+start:
+ 
+  mov ah, 9
+  mov dx, offset prompt
+  int 21h
+
+ 
+  mov si, offset binary
+  mov cx, 16  
+read_digit:
+  mov ah, 1   
+  int 21h     
+  cmp al, 0Dh 
+  je convert  
+  cmp al, '0' 
+  jb error    
+  cmp al, '1' 
+  ja error    
+  mov [si], al
+  inc si      
+  loop read_digit 
+
+convert:
+
+  mov cx, 4   
+  mov bx, 0   
+next_digit:
+  mov al, [binary]
+  shr al, cl      
+  and al, 0Fh     
+  cmp al, 0Ah     
+  jl hex_digit    
+  add al, 7h      
+hex_digit:
+  add bl, al      
+  shl bl, cl      
+  add [hex], bl   
+  mov bl, 0       
+  add si, 1       
+  loop next_digit 
+
+  
+  mov ah, 9
+  mov dx, offset hex_output
+  int 21h
+
+  
+  mov ah, 4Ch
+  int 21h
+
+error:
+ 
+  mov ah, 9
+  mov dx, offset error_msg
+  int 21h
+  jmp start
+
+
+binary db 16 dup(0)
+hex db 8 dup(0)
+prompt db 'Enter a binary number of 16 digits or less:', 0Dh, 0Ah, '$'
+error_msg db 'Error: illegal character entered. Please try again.', 0Dh, 0Ah, '$'
+hex_output db 'The hexadecimal equivalent is:', 0Dh, 0Ah, '$'
